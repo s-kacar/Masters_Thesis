@@ -1,0 +1,12 @@
+# Python byte-code
+__pycache__/
+*.py[co]
+
+# Conda / venvs
+.conda/
+.env/
+
+# Large or derived data
+data/
+tmp/
+results/
