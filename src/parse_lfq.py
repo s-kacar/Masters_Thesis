@@ -27,44 +27,48 @@ OUT  = Path(args.out).expanduser().resolve()
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 # --------- tweak these three strings if your file differs ---------
-id_col        = "Protein ID"          # column that has search IDs
-lfq_prefix    = " MaxLFQ Intensity"       # every LFQ column starts with this
-tissue_lookup = lambda col: col.split(lfq_prefix)[1]  # pull tissue name
-# ------------------------------------------------------------------
-code_regex = re.compile(r"P\d+_(\d+)")
+# ---------- tweak these strings & function if your file differs ----------
+id_col     = "Protein ID"                # column that has protein IDs
+lfq_suffix = " MaxLFQ Intensity"         # common tail of every LFQ column
 
-def tissue_lookup(col: str) -> str:
-    """Extract tissue name from LFQ column header."""
+code_regex = re.compile(r"P\d+_(\d+)")   # grabs the digits after the underscore
+
+def tissue_lookup(colname: str) -> str:
+    """
+    Turn a full LFQ header like
+    'P093501_1 MaxLFQ Intensity'  →  'Primary leaf'
+    """
     m = code_regex.search(colname)
     if not m:
-        return colname
-    code = m.group(1)
+        return colname                 # fallback: give raw header
 
-    code_map = {'93501_1 MaxLFQ Intensity': 'Primary leaf', '93502_2 MaxLFQ Intensity': 'Secondary leaf', '93503_3 MaxLFQ Intensity': 'Young root',
-            '93504_4 MaxLFQ Intensity': 'Node', '93505_5 MaxLFQ Intensity': 'Internode', '93506_6 MaxLFQ Intensity': 'Adult root *',
-            '93507_7 MaxLFQ Intensity': 'Adult root **', '93508_8 MaxLFQ Intensity': 'Adult root ***', '93509_9 MaxLFQ Intensity': 'Anther *',
-            '93510_10 MaxLFQ Intensity': 'Anther **', '93511_11 MaxLFQ Intensity': 'Pollen', '93512_12 MaxLFQ Intensity': 'Stigma, style and ovary *',
-            '93513_13 MaxLFQ Intensity': 'Stigma, style and ovary **', '93514_14 MaxLFQ Intensity': 'Immature seed *', '93515_15 MaxLFQ Intensity': 'Immature seed **',
-            '93516_16 MaxLFQ Intensity': 'Mature seed'}
+    code = m.group(1)                  # "1", "2", …
+
+    code_map = {                       # fill in or edit as needed
+        "1":  "Primary leaf",
+        "2":  "Secondary leaf",
+        "3":  "Young root",
+        "4":  "Node",
+        "5":  "Internode",
+        "6":  "Adult root *",
+        "7":  "Adult root **",
+        "8":  "Adult root ***",
+        "9":  "Anther *",
+        "10": "Anther **",
+        "11": "Pollen",
+        "12": "Stigma/style/ovary *",
+        "13": "Stigma/style/ovary **",
+        "14": "Immature seed *",
+        "15": "Immature seed **",
+        "16": "Mature seed",
+    }
 
     return code_map.get(code, f"tissue_{code}")
-python src/src/parse_lfq.py --in "data/database_search_results/ENB/wheat/combined_protein.tsv" --out "tmp/lfq_wheat.tsv" --species wheat
-
-
-
-
-
-
-
-
-
-
-
 
 df = pd.read_csv(IN, sep="\t")
 
 # keep ID col + all LFQ cols
-lfq_cols = [c for c in df.columns if c.endswith(lfq_prefix)]
+lfq_cols = [c for c in df.columns if c.endswith(lfq_suffix)]
 slim     = df[[id_col] + lfq_cols]
 
 # reshape
@@ -72,7 +76,7 @@ tidy = (
     slim
     .melt(id_vars=id_col,
           var_name="TissueCol",
-          value_name="LFQ")
+          value_name="MaxLFQ")
     .assign(
         Tissue=lambda d: d.TissueCol.apply(tissue_lookup),
         Species=args.species,
@@ -80,6 +84,8 @@ tidy = (
     )
     .drop(columns=["TissueCol", id_col])
 )
+
+tidy["MaxLFQ"] = pd.to_numeric(tidy["MaxLFQ"], errors="coerce")
 
 tidy.to_csv(OUT, sep="\t", index=False)
 print(f"✅ wrote {len(tidy):,} rows → {OUT.relative_to(Path.cwd())}")
