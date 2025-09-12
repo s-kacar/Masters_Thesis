@@ -44,24 +44,12 @@ def tissue_lookup(colname: str) -> str:
 
     code = m.group(1)                  # "1", "2", …
 
-    code_map = {                       # fill in or edit as needed
-        "1":  "Primary leaf",
-        "2":  "Secondary leaf",
-        "3":  "Young root",
-        "4":  "Node",
-        "5":  "Internode",
-        "6":  "Adult root *",
-        "7":  "Adult root **",
-        "8":  "Adult root ***",
-        "9":  "Anther *",
-        "10": "Anther **",
-        "11": "Pollen",
-        "12": "Stigma/style/ovary *",
-        "13": "Stigma/style/ovary **",
-        "14": "Immature seed *",
-        "15": "Immature seed **",
-        "16": "Mature seed",
-    }
+    code_map = {'93501_1 MaxLFQ Intensity': 'Primary leaf', '93502_2 MaxLFQ Intensity': 'Secondary leaf', '93503_3 MaxLFQ Intensity': 'Young root',
+            '93504_4 MaxLFQ Intensity': 'Node', '93505_5 MaxLFQ Intensity': 'Internode', '93506_6 MaxLFQ Intensity': 'Adult root *',
+            '93507_7 MaxLFQ Intensity': 'Adult root **', '93508_8 MaxLFQ Intensity': 'Adult root ***', '93509_9 MaxLFQ Intensity': 'Anther *',
+            '93510_10 MaxLFQ Intensity': 'Anther **', '93511_11 MaxLFQ Intensity': 'Pollen', '93512_12 MaxLFQ Intensity': 'Stigma, style and ovary *',
+            '93513_13 MaxLFQ Intensity': 'Stigma, style and ovary **', '93514_14 MaxLFQ Intensity': 'Immature seed *', '93515_15 MaxLFQ Intensity': 'Immature seed **',
+            '93516_16 MaxLFQ Intensity': 'Mature seed'}
 
     return code_map.get(code, f"tissue_{code}")
 
