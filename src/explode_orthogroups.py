@@ -7,7 +7,7 @@ OG0000001  | wheat   | TraesCS1A02G012300
 OG0000001  | wheat   | TraesCS1A02G012400
 OG0000001  | barley  | BAJ97982
 …
-
+Explode: for the cell containing many protein IDs(comma seperated) for that species will also be melted with the species columns and its HOG.
 Usage:
   python explode_orthogroups.py Orthogroups.tsv og_long.tsv
 """
