@@ -26,8 +26,6 @@ IN   = Path(args.infile).expanduser().resolve()
 OUT  = Path(args.out).expanduser().resolve()
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
-# --------- tweak these three strings if your file differs ---------
-# ---------- tweak these strings & function if your file differs ----------
 id_col     = "Protein ID"                # column that has protein IDs
 lfq_suffix = " MaxLFQ Intensity"         # common tail of every LFQ column
 
