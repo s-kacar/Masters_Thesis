@@ -1,11 +1,3 @@
-name: Masters_Thesis
-channels:
- - conda-forge
-dependencies:
- - python=3.11
- - pandas
- - numpy
- - scipy
- - matplotlib
- - seaborn
- - pip
+version https://git-lfs.github.com/spec/v1
+oid sha256:97198f9a46d2f0af40b0e847e3840e669702f0ec6bacd81b12d949b80af27dc3
+size 135

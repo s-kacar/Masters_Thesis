@@ -1,12 +1,3 @@
-# Python byte-code
-__pycache__/
-*.py[co]
-
-# Conda / venvs
-.conda/
-.env/
-
-# Large or derived data
-data/
-tmp/
-results/
+version https://git-lfs.github.com/spec/v1
+oid sha256:5b64dd9eebc24dab2feabe2f515920415a906ef86307954e2c5566c2f51b8fc4
+size 116
