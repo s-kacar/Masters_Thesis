@@ -4,8 +4,8 @@ import time
 from Bio import SeqIO
 import os
 
-output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref seq.tsv'
-fasta_path = r'e:\Guido\sibel\Database_Search_Ouput\ENB Barley\GCF_904849725.1_Hordeum_vulgare_combined_FASTA.faa'
+output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Sorghumseq.tsv'
+fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_000003195.3_Sorghum_bicolor.faa'
 
 
 # Step 1: Extract XP_... IDs from FASTA
@@ -77,8 +77,8 @@ def download_results(job_id, filename):
 
 # Step 5: Main pipeline
 def main():
-    output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref seq.tsv'
-    fasta_path = r'e:\Guido\sibel\Database_Search_Ouput\ENB Barley\GCF_904849725.1_Hordeum_vulgare_combined_FASTA.faa'        
+    output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Sorghumseq.tsv'
+    fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_000003195.3_Sorghum_bicolor.faa'        
 
     refseq_ids = extract_refseq_ids(fasta_path)
     print(f"Found {len(refseq_ids)} XP_ IDs in {fasta_path}")
@@ -115,33 +115,45 @@ if __name__ == "__main__":
     main()
 
 
-
 import pandas as pd
 import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Font
+import re
 
 # Read your DIAMOND output with headers
-input = r'e:\Guido\sibel\matches_Hv (2)_Diamond.csv'
-output = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_Hv1.tsv'
+input = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Diamond_poaceae_results\sorghum_blast.tsv'
+output = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SorghumSeptember.tsv'
 
-df = pd.read_csv(input, sep='\t')
+with open(input, 'r', encoding='utf-8') as f:
+    lines = f.readlines()
 
-# Clean up column names (remove spaces, unify casing for convenience)
+# Replace 2+ spaces (not single space in "Query ID") with a real tab
+cleaned_lines = [re.sub(r' {2,}', '\t', line) for line in lines]
+
+# Save to a cleaned version
+cleaned_file = input.replace('.tsv', '_cleaned.tsv')
+with open(cleaned_file, 'w', encoding='utf-8') as f:
+    f.writelines(cleaned_lines)
+
+# Now read it correctly using tab separator
+df = pd.read_csv(cleaned_file, sep='\t')
+
+# Optional cleanup
 df.columns = [col.strip().replace(' ', '_').lower() for col in df.columns]
+
 print("read and complete")
 print(df.columns.tolist())
 
-
 # Sort to prioritize top hits: lowest e-value, then highest bit-score
-df_sorted = df.sort_values(by=['cseqid', 'e-value', 'bit-score'], ascending=[True, True, False])
+df_sorted = df.sort_values(by=['query_id', 'expected_value', 'bit_score'], ascending=[True, True, False])
 print("filtering ...")
 # Keep only the top hit per cseqid
-df_top = df_sorted.drop_duplicates(subset='cseqid', keep='first')
+df_top = df_sorted.drop_duplicates(subset='query_id', keep='first')
 
 print("concatinating ...")
 # Select columns of interest
-result_df = df_top[['cseqid', 'mseqid', 'similarity', 'e-value', 'bit-score', 'mismatches', 'gap_openings']]
+result_df = df_top[['query_id', 'subject_id', 'percentage_of_identical_matches', 'alignment_length', 'query_coverage_per_hsp', 'expected_value', 'bit_score']]
 print("saving ...")
 # Save to new file
 result_df.to_csv(output, sep='\t', index=False)
@@ -157,16 +169,37 @@ from openpyxl.styles import Font
 
 
 # Load the original and new UniProt files
-df1_in = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_Hv1.tsv'
-df2_in = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref seq.tsv'
+df1_in = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SorghumSeptember.tsv'
+df2_in = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Sorghumseq.tsv'
 df1 = pd.read_csv(df1_in, sep='\t')  # original data
 df2 = pd.read_csv(df2_in, sep='\t')    # new data from UniProt
 
+print("DF1 columns:", df1.columns.tolist())
+print("DF2 columns:", df2.columns.tolist())
 # Define the column name that has the UniProt entry numbers
-ENTRY_COLUMN = "Entry"  # Replace with actual column name if different
 
+ENTRY_COLUMN = "Entry"  # Replace with actual column name if different
+XP_COLUMn_1 = "query_id"
+FRoM_COLUMN_2 = "From"
+
+# Clean df1['Entry'] to extract the UniProt ID between pipes
+df1[ENTRY_COLUMN] = df1[ENTRY_COLUMN].str.extract(r'\|([^|]+)\|')[0]
+
+df2[ENTRY_COLUMN] = df2[ENTRY_COLUMN].astype(str).str.strip()
 # 🔄 Merge df1 with df2 on 'Entry', keeping all rows from df1
 merged_df = df1.merge(df2, on=ENTRY_COLUMN, how='left', suffixes=('', '_df2'))
+
+# After extraction and cleaning
+df1_ids = set(df1[ENTRY_COLUMN].dropna().unique())
+df2_ids = set(df2[ENTRY_COLUMN].dropna().unique())
+df1_Xids = set(df1[XP_COLUMn_1].dropna().unique())
+df2_Xids = set(df2[FRoM_COLUMN_2].dropna().unique())
+common = df1_Xids.intersection(df2_Xids)
+
+print(f"Number of unique IDs in df1: {len(df1_Xids)}")
+print(f"Number of unique IDs in df2: {len(df2_Xids)}")
+print(f"Number of matching IDs: {len(common)}")
+
 
 # Save to Excel (to enable styling)
 output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\merged_proteins.xlsx'
@@ -210,7 +243,7 @@ df = pd.read_excel(merged_file)
 
 # --- Step 2: Define column names ---
 FROM_COL = "From"
-REFSEQ_COL = "RefSeq"
+REFSEQ_COL = "query_id"
 EXCHANGED_COL = "exchanged"
 
 # --- Step 3: Clean column names (in case of extra spaces) ---
@@ -279,83 +312,5 @@ print("✅ Done: Comparison, replacement, and formatting completed.")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # matching uniprot entries to refseq on OG combined_proteins data
-# import pandas as pd
-
-# # File paths
-# ref_seq_map = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref seq.csv'
-# og_data = r'e:\Guido\sibel\export\combined_protein.csv'
-
-# # Load CSVs
-# csv1 = pd.read_csv(ref_seq_map)
-# csv2 = pd.read_csv(og_data)
-
-# # Clean up whitespace and enforce string type
-# csv1['From'] = csv1['From'].astype(str).str.strip()
-# csv1['Entry'] = csv1['Entry'].astype(str).str.strip()
-# csv1['Entry Name'] = csv1['Entry Name'].astype(str).str.strip()
-
-# csv2['Protein'] = csv2['Protein'].astype(str).str.strip()
-# csv2['Protein ID'] = csv2['Protein ID'].astype(str).str.strip()
-# csv2['Entry Name'] = csv2['Entry Name'].astype(str).str.strip()
-
-# # Merge on Protein (from csv2) == From (from csv1)
-# merged = pd.merge(
-#     csv2,
-#     csv1[['From', 'Entry', 'Entry Name']],
-#     how='left',
-#     left_on='Protein',
-#     right_on='From'
-# )
-
-# # Replace 'Protein ID' with 'Entry' where matched
-# merged['Protein ID'] = merged['Entry'].combine_first(merged['Protein ID'])
-
-# # Replace 'Entry Name' with matched name where available
-# merged['Entry Name'] = merged['Entry Name_y'].combine_first(merged['Entry Name_x'])
-
-# # Drop temporary columns
-# merged.drop(columns=['From', 'Entry', 'Entry Name_x', 'Entry Name_y'], inplace=True)
-
-# num_matches = merged['Protein ID'].isin(csv1['Entry']).sum()
-# print(f"Protein ID updated in {num_matches} rows.")
-
-# # Save result
-# output_path = r'e:\Guido\sibel\export\updated_combined_protein.csv'
-# merged.to_csv(output_path, index=False)
-# print(f"\n File saved to: {output_path}")
 
 
