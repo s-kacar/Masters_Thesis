@@ -4,8 +4,8 @@ import time
 from Bio import SeqIO
 import os
 
-output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Sorghumseq.tsv'
-fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_000003195.3_Sorghum_bicolor.faa'
+output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Riceseq.tsv'
+fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_034140825.1_Oryza_sativa.faa'
 
 
 # Step 1: Extract XP_... IDs from FASTA
@@ -77,8 +77,8 @@ def download_results(job_id, filename):
 
 # Step 5: Main pipeline
 def main():
-    output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Sorghumseq.tsv'
-    fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_000003195.3_Sorghum_bicolor.faa'        
+    output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Riceseq.tsv'
+    fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_034140825.1_Oryza_sativa.faa'        
 
     refseq_ids = extract_refseq_ids(fasta_path)
     print(f"Found {len(refseq_ids)} XP_ IDs in {fasta_path}")
@@ -113,7 +113,40 @@ def main():
 
 if __name__ == "__main__":
     main()
+############################################################################################################################################
+# Deduplicate UniProt mapping results based on review status and order
+import pandas as pd
 
+# Load your UniProt mapping file
+df = pd.read_csv("e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Riceseq.tsv", sep='\t')
+
+# 🔁 Convert 'Reviewed' column to boolean: Reviewed → True, Unreviewed → False
+df['Reviewed'] = df['Reviewed'].astype(str).str.strip().str.lower().map({
+    'reviewed': True,
+    'unreviewed': False
+})
+
+# 🧠 Group by 'From' and apply prioritization logic
+def select_best_match(group):
+    reviewed = group[group['Reviewed'] == True]
+    if len(reviewed) == 1:
+        return reviewed
+    elif len(reviewed) > 1:
+        return reviewed.iloc[[0]]
+    else:
+        return group.iloc[[0]]
+
+# 🧹 Apply deduplication
+deduplicated_df = df.groupby('From', group_keys=False).apply(select_best_match)
+
+# Reset index for clean output
+deduplicated_df.reset_index(drop=True, inplace=True)
+
+# 💾 Save to file
+deduplicated_df.to_csv("e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\deduplicated_uniprot_mapping.tsv", sep='\t', index=False)
+
+print(f"✅ Deduplicated: {len(deduplicated_df)} unique 'From' IDs retained.")
+###########################################################################################################################################
 
 import pandas as pd
 import pandas as pd
@@ -122,8 +155,8 @@ from openpyxl.styles import Font
 import re
 
 # Read your DIAMOND output with headers
-input = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Diamond_poaceae_results\sorghum_blast.tsv'
-output = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SorghumSeptember.tsv'
+input = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Diamond_poaceae_results\sugarcane_blast.tsv'
+output = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SugarcaneSeptember.tsv'
 
 with open(input, 'r', encoding='utf-8') as f:
     lines = f.readlines()
@@ -162,15 +195,39 @@ result_df.to_csv(output, sep='\t', index=False)
 print(result_df.head())
 
 ###########################################################################################################################################
+import pandas as pd
+from pathlib import Path
 
+# ── paths ───────────────────────────────────────────
+IN  = Path(r"E:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SugarcaneSeptember.tsv")
+OUT = Path(r"E:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SugarcaneSeptember_clean.tsv")
+
+ENTRY_COLUMN = "Entry"          # the column whose values look like  sp|Q9ABC0|MYG_HUMAN
+
+df = pd.read_csv(IN, sep="\t", dtype=str)
+
+#      • sp|Q9ABC0|MYG_HUMAN   →   Q9ABC0
+df[ENTRY_COLUMN] = (
+    df[ENTRY_COLUMN]                    # original column
+      .fillna("")                       # protect against NaN
+      .str.extract(r"\|([^|]+)\|", expand=False)   # grab part between |
+      .fillna(df[ENTRY_COLUMN])         # if no pipes, keep original
+)
+
+# ── 3. write the cleaned TSV ─────────────────────────
+df.to_csv(OUT, sep="\t", index=False)
+print("✓ wrote cleaned file →", OUT)
+
+
+###########################################################################################################################################
 import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 
 
 # Load the original and new UniProt files
-df1_in = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SorghumSeptember.tsv'
-df2_in = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Sorghumseq.tsv'
+df1_in = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_RiceSeptember.tsv'
+df2_in = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Riceseq.tsv'
 df1 = pd.read_csv(df1_in, sep='\t')  # original data
 df2 = pd.read_csv(df2_in, sep='\t')    # new data from UniProt
 
@@ -184,6 +241,7 @@ FRoM_COLUMN_2 = "From"
 
 # Clean df1['Entry'] to extract the UniProt ID between pipes
 df1[ENTRY_COLUMN] = df1[ENTRY_COLUMN].str.extract(r'\|([^|]+)\|')[0]
+
 
 df2[ENTRY_COLUMN] = df2[ENTRY_COLUMN].astype(str).str.strip()
 # 🔄 Merge df1 with df2 on 'Entry', keeping all rows from df1
