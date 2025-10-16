@@ -1,3 +1,5 @@
-.tsv filter=lfs diff=lfs merge=lfs -text
+version https://git-lfs.github.com/spec/v1
+oid sha256:48c876b47ca019aac9bdb6144e554239cff3cf5e13ec30030aa1f1e4e94449cd
+size 69
 * filter=lfs diff=lfs merge=lfs -text
 *.py !text -filter -merge -diff
