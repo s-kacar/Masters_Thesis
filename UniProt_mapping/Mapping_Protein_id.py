@@ -4,15 +4,15 @@ import time
 from Bio import SeqIO
 import os
 
-output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Riceseq.tsv'
-fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_034140825.1_Oryza_sativa.faa'
+output_file = r'e:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Wheat Reseechacek.tsv'
+fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_018294505.1_Triticum_aestivum.faa'
 
 
 # Step 1: Extract XP_... IDs from FASTA
 def extract_refseq_ids(fasta_file):
     ids = set()
     for record in SeqIO.parse(fasta_file, "fasta"):
-        if record.id.startswith("XP_"):
+        if record.id.startswith(("XP_", "NP_", "YP_", "WP_", "ZP_")):
             ids.add(record.id)
     return list(ids)
 
@@ -77,8 +77,8 @@ def download_results(job_id, filename):
 
 # Step 5: Main pipeline
 def main():
-    output_file = r'e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Riceseq.tsv'
-    fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_034140825.1_Oryza_sativa.faa'        
+    output_file = r'e:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Wheat Reseechacek.tsv'
+    fasta_path = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\search_FASTA_ENB\GCF_018294505.1_Triticum_aestivum.faa'        
 
     refseq_ids = extract_refseq_ids(fasta_path)
     print(f"Found {len(refseq_ids)} XP_ IDs in {fasta_path}")
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 import pandas as pd
 
 # Load your UniProt mapping file
-df = pd.read_csv("e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\extracted ref Riceseq.tsv", sep='\t')
+df = pd.read_csv(r"E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Wheat Reseechacek.tsv", sep='\t')
 
 # 🔁 Convert 'Reviewed' column to boolean: Reviewed → True, Unreviewed → False
 df['Reviewed'] = df['Reviewed'].astype(str).str.strip().str.lower().map({
@@ -143,7 +143,7 @@ deduplicated_df = df.groupby('From', group_keys=False).apply(select_best_match)
 deduplicated_df.reset_index(drop=True, inplace=True)
 
 # 💾 Save to file
-deduplicated_df.to_csv("e:\Guido\sibel\export\extract ENB annotation to RefSeq and match to Uniprot ID\deduplicated_uniprot_mapping.tsv", sep='\t', index=False)
+deduplicated_df.to_csv(r"E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Wheat ReseechacekX.tsv", sep='\t', index=False)
 
 print(f"✅ Deduplicated: {len(deduplicated_df)} unique 'From' IDs retained.")
 ###########################################################################################################################################
@@ -155,8 +155,8 @@ from openpyxl.styles import Font
 import re
 
 # Read your DIAMOND output with headers
-input = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Diamond_poaceae_results\sugarcane_blast.tsv'
-output = r'e:\Guido\sibel\import\Uniprot ENB Id matching\top_blast_hits_cleaned_SugarcaneSeptember.tsv'
+input = r'E:\Guido\sibel\Masters_Thesis\Uniprot_id_matching\Diamond_poaceae_results\wheat_blast.tsv'
+output = r'e:\Guido\sibel\import\Uniprot ENB Id matching\wheatDiamondonlyclean.tsv'
 
 with open(input, 'r', encoding='utf-8') as f:
     lines = f.readlines()
