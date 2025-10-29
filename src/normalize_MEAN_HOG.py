@@ -12,8 +12,8 @@ def round10(x: float) -> float:
     return float(Decimal(str(x)).quantize(Decimal("0.0000000000"), rounding=ROUND_HALF_UP))
 
 # --- paths ---
-IN_PATH  = r"E:\Guido\sibel\Masters_Thesis\data\protein_names_mapped_to_Orthogroups_intensity_mean.tsv"
-OUT_PATH = r"E:\Guido\sibel\Masters_Thesis\data\protein_names_mapped_to_Orthogroups_intensity_mean.MEDIAN_NORM.tsv"
+IN_PATH  = r"E:\Guido\sibel\Masters_Thesis\data\melted_OG_matrix_non_comma_seperated_based_oninventory28.10.tsv"
+OUT_PATH = r"E:\Guido\sibel\Masters_Thesis\data\All23102025_Orthogroups_intensity_28.10mean.MEDIAN_NORM.tsv"
 
 # --- load ---
 df = pd.read_csv(IN_PATH, sep="\t")

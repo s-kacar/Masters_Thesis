@@ -23,20 +23,9 @@ ENTRY_COL_ARG = sys.argv[4] if len(sys.argv) == 5 else None   # optional
 t0 = time.perf_counter()
 
 # ── 1. load inventory list ─────────────────────────────────────────────
-# inv_df = pd.read_excel(INV_XLS, sheet_name="deduplicated", dtype=str)
-# inventory = (
-#     inv_df['ID']
-#     .dropna()
-#     .str.strip()
-#     .unique()
-#     .tolist()
-# )
-# inventory_set = set(inventory)
-# print(f"Inventory IDs: {len(inventory_set):,}")
-# ── 1. load inventory list ─────────────────────────────────────────────
-inv_df = pd.read_csv(INV_XLS, sep="\t", dtype=str)
+inv_df = pd.read_excel(INV_XLS, sheet_name="Triticum aestivum", dtype=str)
 inventory = (
-    inv_df['ProteinID']
+    inv_df['Entry Name (UniProt)']
     .dropna()
     .str.strip()
     .unique()
@@ -46,10 +35,10 @@ inventory_set = set(inventory)
 print(f"Inventory IDs: {len(inventory_set):,}")
 
 # ── 2. load wide table ─────────────────────────────────────────────────
-wide = pd.read_csv(WIDE_TSV, sep="\t")
+wide = pd.read_csv(WIDE_TSV)
 
 # find every Entry_<species> column automatically
-entry_cols = [c for c in wide.columns if c.startswith("ProteinID")]
+entry_cols = [c for c in wide.columns if c.startswith("wheatup_entry")]
 print(f"Entry columns detected: {len(entry_cols)}")
 
 # ── 3. mark rows that contain ≥1 inventory ID in ANY Entry column ——––
