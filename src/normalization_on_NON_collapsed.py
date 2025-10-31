@@ -72,8 +72,8 @@ def median_excl_zero(series: pd.Series) -> float:
     return float(vals.median(skipna=True))
 
 # ---------- paths ----------
-IN_PATH  = r"E:\Guido\sibel\Masters_Thesis\data\melted_OG_matrix_non_comma_seperated_based_oninventory28.10.tsv"
-OUT_PATH = r"E:\Guido\sibel\Masters_Thesis\data\Inventory29102025_Orthogroups_intensity_mean.MEDIAN_NORM.tsv"
+IN_PATH  = r"E:\Guido\sibel\Masters_Thesis\data\All_Orthogroups_all_proteins_mapped_Intensity.tsv"
+OUT_PATH = r"E:\Guido\sibel\Masters_Thesis\data\ALL30102025_Orthogroups_intensity_mean.MEDIAN_NORM.tsv"
 
 # ---------- whitelist ----------
 SPECIES_ALLOW = {

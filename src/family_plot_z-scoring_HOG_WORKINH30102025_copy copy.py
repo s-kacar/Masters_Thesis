@@ -14,12 +14,12 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.patches as mpatches
 
 # ========= CONFIG =========
-IN_PATH  = r"E:\Guido\sibel\Masters_Thesis\data\All23102025_Orthogroups_intensity_mean.MEDIAN_NORM.xlsx"
-SHEET    = "Sheet2"
+IN_PATH  = r"E:\Guido\sibel\Masters_Thesis\data\Wheat_Inventory30102025_Orthogroups_intensity_MEDIAN_NORM.xlsx"
+SHEET    = "Wheat_Inventory30102025_Orthogr"
 
-OUT_SIMPLE         = r"E:\Guido\sibel\Masters_Thesis\data\all_cluster23102025.png"
-OUT_CLUSTER        = r"E:\Guido\sibel\Masters_Thesis\data\all_cluster23102025_1_.png"
-OUT_CLUSTER_FAMILY = r"E:\Guido\sibel\Masters_Thesis\data\all_zscore_specieswise23102025.png"
+OUT_SIMPLE         = r"E:\Guido\sibel\Masters_Thesis\data\all_cluster31102025.png"
+OUT_CLUSTER        = r"E:\Guido\sibel\Masters_Thesis\data\all_cluster31102025_1_.png"
+OUT_CLUSTER_FAMILY = r"E:\Guido\sibel\Masters_Thesis\data\all_zscore_31102025.png"
 
 # ========= LOAD =========
 df = pd.read_excel(IN_PATH, sheet_name=SHEET).fillna("")
@@ -32,47 +32,44 @@ df.columns = (
 )
 
 # ========= INTENSITY COLUMNS (any 'P' + digits) =========
-# --- find intensity columns: any column that has 'P' followed by digits ---
-META_EXACT  = {"hog", "orthogroup"}   # exclude exact metadata cols
-META_PREFIX = ("entry_",)             # exclude prefixes like Entry_*
 
-# don't use \b; underscores break it. This matches P + digits,
-# and stops before a non-digit (underscore, letter) or end-of-string.
-P_CH_PATTERN = re.compile(r"(?i)P\d+(?=[^0-9]|$)")
+# ---------- whitelist ----------
+SPECIES_ALLOW = {
+    'GCF_904849725.1_Hordeum_vulgare',
+    'GCF_902167145.1_Zea_mays',
+    'GCA_963924085.1_Cenchrus_americanus.helixer',
+    'GCF_034140825.1_Oryza_sativa',
+    'GCF_000003195.3_Sorghum_bicolor',
+    'GCF_018294505.1_Triticum_aestivum',
+}
 
-def is_intensity_col(col: str) -> bool:
-    c = col.strip()
-    cl = c.lower()
-    if cl in META_EXACT:
-        return False
-    if any(cl.startswith(p) for p in META_PREFIX):
-        return False
-    return bool(P_CH_PATTERN.search(c))
+# ---------- main ----------
 
-intensity_cols = [c for c in df.columns if is_intensity_col(c)]
+# load
+df = pd.read_excel(IN_PATH, sheet_name=SHEET)
+print(f"[chk] loaded: shape={df.shape}, ncols={len(df.columns)}")
+
+# species cleanup + whitelist
+df['Species'] = df['Species'].astype(str).str.strip()
+species_values = [sp for sp in df['Species'].unique() if sp in SPECIES_ALLOW]
+unknown = sorted(set(df['Species'].unique()) - SPECIES_ALLOW)
+if unknown:
+    print(f"[warn] {len(unknown)} species in file but not whitelisted (skipped): {unknown}")
+
+print(f"[chk] will normalize across {len(species_values)} species (whitelisted)")
+
+# intensity columns
+META_EXACT  = {"HOG", "orthogroup", "Species", "ProteinID"}
+META_PREFIX = ("Entry_",)
+intensity_cols = [
+    c for c in df.columns
+    if ("MaxLFQ" in c) and (c not in META_EXACT) and (not any(c.startswith(p) for p in META_PREFIX))
+]
 if not intensity_cols:
-    print("[DEBUG] No intensity columns found. First 40 cols:")
-    for c in df.columns[:40]:
-        print(" -", c)
-    raise ValueError("No intensity columns matched (must contain 'P' followed by digits).")
-else:
-    print(f"[INFO] Matched {len(intensity_cols)} intensity columns (showing first 10):")
-    for c in intensity_cols[:10]:
-        print(" -", c)
-from collections import defaultdict
+    raise ValueError("No intensity columns matched '*MaxLFQ*'.")
 
-SPECIES_TOKEN = re.compile(r"([A-Z][a-z]+_[a-z]+)")
-
-def species_key(col: str) -> str:
-    hits = SPECIES_TOKEN.findall(col)
-    return hits[-1] if hits else ""
-
-species_to_idx = defaultdict(list)
-for j, c in enumerate(intensity_cols):
-    sp = species_key(c)
-    if sp:
-        species_to_idx[sp].append(j)
-
+print(f"[chk] intensity_cols={len(intensity_cols)}")
+print("[chk] first 10 intensity cols:", intensity_cols[:10])
 # ========= HELPERS =========
 def ensure_dir(path_str):
     Path(path_str).parent.mkdir(parents=True, exist_ok=True)
@@ -346,3 +343,110 @@ ensure_dir(OUT_CLUSTER_FAMILY)
 fig3.savefig(OUT_CLUSTER_FAMILY, dpi=300, bbox_inches="tight")
 plt.close(fig3)
 print(f"[OK] saved {OUT_CLUSTER_FAMILY}")
+
+# ========= ADD-ON: make one page per species (HOG on y-axis) =========
+# Drop-in: uses your existing df_ordered, Z_masked, intensity_cols, and species_to_idx
+from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.colors import TwoSlopeNorm
+
+def _safe_name(s: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", s)
+
+def export_per_species_pages(
+    df_ordered: pd.DataFrame,
+    Z_masked_full,                  # your Z_masked (already row-ordered & masked)
+    intensity_cols: list[str],
+    species_to_idx: dict[str, list[int]],
+    pdf_path: str,
+    png_dir: str | None = None,
+    show_all_hog: bool = True,
+):
+    """Create a multi-page PDF (and optional PNGs) with one heatmap page per species.
+       Y-axis shows HOGs from df_ordered; X-axis = that species' MaxLFQ columns."""
+    if "HOG" in df_ordered.columns:
+        hog_labels = df_ordered["HOG"].astype(str).tolist()
+    else:
+        hog_labels = [str(i) for i in range(len(df_ordered))]
+
+    # ensure outputs exist
+    Path(pdf_path).parent.mkdir(parents=True, exist_ok=True)
+    if png_dir:
+        Path(png_dir).mkdir(parents=True, exist_ok=True)
+
+    cmap = plt.cm.RdBu_r
+    cmap.set_bad(color="lightgray")
+    norm = TwoSlopeNorm(vmin=-2, vcenter=0.0, vmax=2)  # same scale as your global z-plot
+
+    with PdfPages(pdf_path) as pdf:
+        for sp_token, idxs in species_to_idx.items():
+            if not idxs:
+                print(f"[warn] {sp_token}: no columns; skipping")
+                continue
+
+            # slice columns for this species (keep the already-clustered row order)
+            Z_sp = Z_masked_full[:, idxs]
+            cols_sp = [intensity_cols[j] for j in idxs]
+
+            # if fully masked, warn and skip
+            if np.ma.count(Z_sp) == 0:
+                print(f"[warn] {sp_token}: all values masked/NaN; skipping page")
+                continue
+
+            # figure width adapted to number of columns
+            w = max(8, len(idxs) * 0.35)
+            fig, ax = plt.subplots(figsize=(w, 8))
+            im = ax.imshow(Z_sp, aspect="auto", cmap=cmap, norm=norm)
+            cb = fig.colorbar(im, ax=ax, label="per-species row z-score of log2(intensity)")
+
+            # x labels = species’ columns
+            ax.set_xticks(range(len(idxs)))
+            ax.set_xticklabels(cols_sp, rotation=90, ha="center", fontsize=8)
+
+            # y labels = HOG ids (always on unless you want to auto-hide for huge matrices)
+            if show_all_hog or len(hog_labels) <= 200:
+                ax.set_yticks(range(len(hog_labels)))
+                ax.set_yticklabels(hog_labels, fontsize=7)
+            else:
+                ax.set_yticks([])
+
+            ax.set_xlabel("Channels / Time Points (species-specific)")
+            ax.set_ylabel("Orthogroup (HOG)")
+            ax.set_title(f"{sp_token} — Per-species row z-score")
+
+            fig.tight_layout()
+            pdf.savefig(fig, bbox_inches="tight")
+            if png_dir:
+                out_png = Path(png_dir) / f"{_safe_name(sp_token)}.png"
+                fig.savefig(out_png, dpi=300, bbox_inches="tight")
+                print(f"[OK] saved PNG → {out_png}")
+            plt.close(fig)
+
+    print(f"[OK] saved multi-page PDF → {pdf_path}")
+
+# ---- call it ----
+# If species_to_idx already exists (you built it earlier via SPECIES_TOKEN), we reuse it.
+# If not, recreate it quickly from the headers:
+if 'species_to_idx' not in locals() or not species_to_idx:
+    SPECIES_TOKEN = re.compile(r"([A-Z][a-z]+_[a-z]+)")
+    def species_key(col: str) -> str:
+        hits = SPECIES_TOKEN.findall(col)
+        return hits[-1] if hits else ""
+    species_to_idx = defaultdict(list)
+    for j, c in enumerate(intensity_cols):
+        sp = species_key(c)
+        if sp:
+            species_to_idx[sp].append(j)
+
+# paths: 1) a clean per-species PDF  2) optional PNGs in subfolder
+PER_SPECIES_PDF = str(Path(OUT_CLUSTER).with_name(Path(OUT_CLUSTER).stem + "_per_species.pdf"))
+PER_SPECIES_DIR = str(Path(OUT_CLUSTER).parent / "per_species_pages")
+
+export_per_species_pages(
+    df_ordered=df_ordered,
+    Z_masked_full=Z_masked,
+    intensity_cols=intensity_cols,
+    species_to_idx=species_to_idx,
+    pdf_path=PER_SPECIES_PDF,
+    png_dir=PER_SPECIES_DIR,       # set to None if you don’t want PNGs
+    show_all_hog=True
+)

@@ -45,6 +45,8 @@ inventory = (
 inventory_set = set(inventory)
 print(f"Inventory IDs: {len(inventory_set):,}")
 
+
+
 # ── 2. load wide table ─────────────────────────────────────────────────
 wide = pd.read_csv(WIDE_TSV, sep="\t")
 
